@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const { Client, GatewayIntentBits, Events,
     ModalBuilder, TextInputBuilder, TextInputStyle,
     ActionRowBuilder, EmbedBuilder } = require("discord.js");
@@ -6,10 +8,7 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
-// ================== DEINE IDS ==================
-const ROLE_3 = "1518158795740680193";
-const ROLE_4 = "1518159610618581172";
-
+// ================== CHANNEL IDS ==================
 const CHANNEL_GEWINNER = "1518162583855562852";
 const CHANNEL_RACE = "1518633087079157972";
 const CHANNEL_WETTE = "1518633042409685223";
@@ -21,11 +20,16 @@ client.once("ready", () => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
 
+    const channel = await client.channels.fetch(
+        interaction.commandName === "gewinner"
+            ? CHANNEL_GEWINNER
+            : interaction.commandName === "race"
+                ? CHANNEL_RACE
+                : CHANNEL_WETTE
+    ).catch(() => null);
+
     // ================= /GEWINNER =================
     if (interaction.isChatInputCommand() && interaction.commandName === "gewinner") {
-
-        if (!interaction.member.roles.cache.has(ROLE_3))
-            return interaction.reply({ content: "Keine Berechtigung", ephemeral: true });
 
         const modal = new ModalBuilder()
             .setCustomId("gewinnerModal")
@@ -36,23 +40,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
             .setLabel("Name des Cups")
             .setStyle(TextInputStyle.Short);
 
-        const p1 = new TextInputBuilder()
-            .setCustomId("p1")
-            .setLabel("Platz 1")
-            .setStyle(TextInputStyle.Short)
-            .setRequired(false);
-
-        const p2 = new TextInputBuilder()
-            .setCustomId("p2")
-            .setLabel("Platz 2")
-            .setStyle(TextInputStyle.Short)
-            .setRequired(false);
-
-        const p3 = new TextInputBuilder()
-            .setCustomId("p3")
-            .setLabel("Platz 3")
-            .setStyle(TextInputStyle.Short)
-            .setRequired(false);
+        const p1 = new TextInputBuilder().setCustomId("p1").setLabel("Platz 1").setStyle(TextInputStyle.Short).setRequired(false);
+        const p2 = new TextInputBuilder().setCustomId("p2").setLabel("Platz 2").setStyle(TextInputStyle.Short).setRequired(false);
+        const p3 = new TextInputBuilder().setCustomId("p3").setLabel("Platz 3").setStyle(TextInputStyle.Short).setRequired(false);
 
         return interaction.showModal(
             modal.addComponents(
@@ -66,9 +56,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // ================= /RACE =================
     if (interaction.isChatInputCommand() && interaction.commandName === "race") {
-
-        if (!interaction.member.roles.cache.has(ROLE_3))
-            return interaction.reply({ content: "Keine Berechtigung", ephemeral: true });
 
         const modal = new ModalBuilder()
             .setCustomId("raceModal")
@@ -101,9 +88,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // ================= /WETTE =================
     if (interaction.isChatInputCommand() && interaction.commandName === "wette") {
 
-        if (!interaction.member.roles.cache.has(ROLE_4))
-            return interaction.reply({ content: "Keine Berechtigung", ephemeral: true });
-
         const modal = new ModalBuilder()
             .setCustomId("wetteModal")
             .setTitle("Wette");
@@ -135,10 +119,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // ================= MODALS =================
     if (!interaction.isModalSubmit()) return;
 
+    let targetChannel = null;
+
+    if (interaction.customId === "gewinnerModal") targetChannel = CHANNEL_GEWINNER;
+    if (interaction.customId === "raceModal") targetChannel = CHANNEL_RACE;
+    if (interaction.customId === "wetteModal") targetChannel = CHANNEL_WETTE;
+
+    const channelSend = await client.channels.fetch(targetChannel).catch(() => null);
+    if (!channelSend) return;
+
     // -------- GEWINNER --------
     if (interaction.customId === "gewinnerModal") {
-
-        const channel = await client.channels.fetch(CHANNEL_GEWINNER);
 
         const embed = new EmbedBuilder()
             .setTitle(`Gewinner ${interaction.fields.getTextInputValue("cup")}`)
@@ -148,14 +139,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 { name: "Platz 3", value: interaction.fields.getTextInputValue("p3") || "-" },
             );
 
-        await channel.send({ embeds: [embed] });
+        await channelSend.send({ embeds: [embed] });
         return interaction.reply({ content: "Gesendet", ephemeral: true });
     }
 
     // -------- RACE --------
     if (interaction.customId === "raceModal") {
-
-        const channel = await client.channels.fetch(CHANNEL_RACE);
 
         const embed = new EmbedBuilder()
             .setTitle(interaction.fields.getTextInputValue("name"))
@@ -164,14 +153,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 { name: "Datum", value: interaction.fields.getTextInputValue("date") },
             );
 
-        await channel.send({ embeds: [embed] });
+        await channelSend.send({ embeds: [embed] });
         return interaction.reply({ content: "Gesendet", ephemeral: true });
     }
 
     // -------- WETTE --------
     if (interaction.customId === "wetteModal") {
-
-        const channel = await client.channels.fetch(CHANNEL_WETTE);
 
         const embed = new EmbedBuilder()
             .setTitle("Wette")
@@ -181,9 +168,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 { name: "Auf was", value: interaction.fields.getTextInputValue("onwhat") },
             );
 
-        await channel.send({ embeds: [embed] });
+        await channelSend.send({ embeds: [embed] });
         return interaction.reply({ content: "Gesendet", ephemeral: true });
     }
 });
 
-client.login("DEIN_BOT_TOKEN");
+client.login(process.env.TOKEN);
