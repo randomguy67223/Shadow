@@ -1,3 +1,8 @@
+require('./token.js'); // Lädt den Token in das globale System
+
+// Ab hier läuft dein Code völlig unverändert weiter, 
+// da "TOKEN" jetzt überall automatisch bekannt ist.
+
 require("dotenv").config();
 
 const {
